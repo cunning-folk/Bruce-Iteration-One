@@ -1,4 +1,6 @@
 import { users, messages, assistantThreads, type User, type InsertUser, type Message, type InsertMessage, type AssistantThread, type InsertAssistantThread } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -15,80 +17,56 @@ export interface IStorage {
   createAssistantThread(thread: InsertAssistantThread): Promise<AssistantThread>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private messages: Map<number, Message>;
-  private assistantThreads: Map<number, AssistantThread>;
-  private currentUserId: number;
-  private currentMessageId: number;
-  private currentThreadId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.messages = new Map();
-    this.assistantThreads = new Map();
-    this.currentUserId = 1;
-    this.currentMessageId = 1;
-    this.currentThreadId = 1;
-  }
-
+export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
     return user;
   }
 
   async getMessagesBySession(sessionId: string): Promise<Message[]> {
-    return Array.from(this.messages.values())
-      .filter(message => message.sessionId === sessionId)
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    return await db.select().from(messages)
+      .where(eq(messages.sessionId, sessionId))
+      .orderBy(messages.timestamp);
   }
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
-    const id = this.currentMessageId++;
-    const message: Message = { 
-      ...insertMessage, 
-      id,
-      timestamp: new Date()
-    };
-    this.messages.set(id, message);
+    const [message] = await db
+      .insert(messages)
+      .values(insertMessage)
+      .returning();
     return message;
   }
 
   async clearMessagesBySession(sessionId: string): Promise<void> {
-    const messagesToDelete = Array.from(this.messages.entries())
-      .filter(([_, message]) => message.sessionId === sessionId)
-      .map(([id, _]) => id);
-    
-    messagesToDelete.forEach(id => this.messages.delete(id));
+    await db.delete(messages).where(eq(messages.sessionId, sessionId));
   }
 
   async getAssistantThread(sessionId: string): Promise<AssistantThread | undefined> {
-    return Array.from(this.assistantThreads.values())
-      .find(thread => thread.sessionId === sessionId);
+    const [thread] = await db.select().from(assistantThreads)
+      .where(eq(assistantThreads.sessionId, sessionId));
+    return thread || undefined;
   }
 
   async createAssistantThread(insertThread: InsertAssistantThread): Promise<AssistantThread> {
-    const id = this.currentThreadId++;
-    const thread: AssistantThread = { 
-      ...insertThread, 
-      id,
-      createdAt: new Date()
-    };
-    this.assistantThreads.set(id, thread);
+    const [thread] = await db
+      .insert(assistantThreads)
+      .values(insertThread)
+      .returning();
     return thread;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
