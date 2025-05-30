@@ -10,7 +10,7 @@ export default function ChatHeader({ onClearChat }: ChatHeaderProps) {
           <i className="fas fa-robot text-primary-foreground text-sm"></i>
         </div>
         <div>
-          <h1 className="text-lg font-semibold text-foreground">Bruce Tift Assistant</h1>
+          <h1 className="text-lg font-semibold text-foreground">AI Therapy Assistant</h1>
           <p className="text-sm text-muted-foreground">Online</p>
         </div>
       </div>
