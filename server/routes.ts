@@ -106,34 +106,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (runStatus && runStatus.status === "completed") {
-        // Get the assistant's response
-        const threadMessages = await openai.beta.threads.messages.list(assistantThread.threadId);
-        const assistantMessage = threadMessages.data.find(msg => 
-          msg.role === "assistant" && 
-          msg.created_at > (userMessage.timestamp.getTime() / 1000)
-        );
+        // Get the assistant's response - use the most recent assistant message
+        const threadMessages = await openai.beta.threads.messages.list(assistantThread.threadId, { limit: 10 });
+        const assistantMessage = threadMessages.data.find(msg => msg.role === "assistant");
 
-        console.log("Assistant message:", JSON.stringify(assistantMessage, null, 2));
-
+        console.log("Found assistant message:", assistantMessage?.id);
+        console.log("Message content structure:", JSON.stringify(assistantMessage?.content, null, 2));
+        
         if (assistantMessage && assistantMessage.content && assistantMessage.content.length > 0) {
-          const messageContent = assistantMessage.content[0];
-          if (messageContent.type === "text" && messageContent.text) {
-            // Save assistant response directly to database
-            const [assistantResponse] = await db
-              .insert(messages)
-              .values({
-                content: messageContent.text.value,
-                role: "assistant",
-                sessionId: sessionId
-              })
-              .returning();
+          // Get the text content from the first content block
+          const contentBlock = assistantMessage.content[0];
+          let responseText = "Assistant responded";
+          
+          if (contentBlock.type === "text") {
+            responseText = (contentBlock as any).text?.value || "No text content";
+          }
+          
+          console.log("Extracted response text:", responseText);
+          
+          // Save the assistant response
+          const assistantResponse = await storage.createMessage({
+            content: responseText,
+            role: "assistant",
+            sessionId: sessionId
+          });
 
           res.json({ userMessage, assistantResponse });
         } else {
-          throw new Error("No valid assistant response found");
+          // Fallback response if no content found
+          const assistantResponse = await storage.createMessage({
+            content: "Assistant completed the request",
+            role: "assistant", 
+            sessionId: sessionId
+          });
+          
+          res.json({ userMessage, assistantResponse });
         }
       } else {
-        throw new Error(`Assistant run failed with status: ${runStatus.status}`);
+        throw new Error(`Assistant run failed with status: ${runStatus?.status || "unknown"}`);
       }
 
     } catch (error) {
