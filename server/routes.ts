@@ -29,7 +29,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send a message and get assistant response
   app.post("/api/messages", async (req, res) => {
     try {
-      const messageData = insertMessageSchema.parse(req.body);
+      console.log("Raw request body:", req.body);
+      console.log("Request headers:", req.headers);
+      
+      // Create the message data with explicit role
+      const requestData = {
+        content: req.body.content,
+        sessionId: req.body.sessionId,
+        role: "user"
+      };
+      console.log("Parsing data:", requestData);
+      
+      const messageData = insertMessageSchema.parse(requestData);
       
       if (!ASSISTANT_ID) {
         return res.status(500).json({ message: "OpenAI Assistant ID not configured" });
@@ -72,11 +83,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("Created run:", run.id, "for thread:", assistantThread.threadId);
 
-      // Use the polling method provided by OpenAI SDK
-      const completedRun = await openai.beta.threads.runs.poll(assistantThread.threadId, run.id);
-      console.log("Completed run status:", completedRun.status);
+      // Wait for completion with manual polling
+      let runStatus = run;
+      while (runStatus.status === "queued" || runStatus.status === "in_progress") {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const response = await fetch(`https://api.openai.com/v1/threads/${assistantThread.threadId}/runs/${run.id}`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'OpenAI-Beta': 'assistants=v2'
+          }
+        });
+        runStatus = await response.json();
+        console.log("Run status:", runStatus.status);
+      }
 
-      if (completedRun && completedRun.status === "completed") {
+      if (runStatus && runStatus.status === "completed") {
         // Get the assistant's response
         const messages = await openai.beta.threads.messages.list(assistantThread.threadId);
         const assistantMessage = messages.data.find(msg => 
@@ -97,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error("No valid assistant response found");
         }
       } else {
-        throw new Error(`Assistant run failed with status: ${completedRun.status}`);
+        throw new Error(`Assistant run failed with status: ${runStatus.status}`);
       }
 
     } catch (error) {
