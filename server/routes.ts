@@ -13,7 +13,83 @@ const openai = new OpenAI({
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID || process.env.ASSISTANT_ID || "asst_h3s1TBNQUXg1NqxGcwXNAWZl";
 
+// Thread preloading system
+class ThreadPreloader {
+  private preloadedThreads: Set<string> = new Set();
+  private maxPreloadedThreads = 5;
+  
+  async preloadThread(): Promise<string> {
+    try {
+      const thread = await openai.beta.threads.create();
+      this.preloadedThreads.add(thread.id);
+      console.log(`Preloaded thread: ${thread.id}`);
+      return thread.id;
+    } catch (error) {
+      console.error("Error preloading thread:", error);
+      throw error;
+    }
+  }
+  
+  getPreloadedThread(): string | null {
+    const threadId = this.preloadedThreads.values().next().value;
+    if (threadId) {
+      this.preloadedThreads.delete(threadId);
+      // Immediately start preloading a replacement
+      this.preloadThread().catch(console.error);
+      return threadId;
+    }
+    return null;
+  }
+  
+  async initializePool() {
+    console.log("Initializing thread preload pool...");
+    const promises = [];
+    for (let i = 0; i < this.maxPreloadedThreads; i++) {
+      promises.push(this.preloadThread());
+    }
+    await Promise.all(promises);
+    console.log(`Thread pool initialized with ${this.maxPreloadedThreads} threads`);
+  }
+  
+  getPoolStatus() {
+    return {
+      available: this.preloadedThreads.size,
+      target: this.maxPreloadedThreads
+    };
+  }
+  
+  // Maintain the thread pool by ensuring we always have the target number
+  async maintainPool() {
+    const currentCount = this.preloadedThreads.size;
+    const needed = this.maxPreloadedThreads - currentCount;
+    
+    if (needed > 0) {
+      console.log(`Maintaining thread pool: adding ${needed} threads`);
+      const promises = [];
+      for (let i = 0; i < needed; i++) {
+        promises.push(this.preloadThread());
+      }
+      await Promise.all(promises);
+    }
+  }
+}
+
+const threadPreloader = new ThreadPreloader();
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // Initialize thread preload pool on startup
+  threadPreloader.initializePool().catch(console.error);
+  
+  // Set up periodic maintenance every 5 minutes
+  setInterval(() => {
+    threadPreloader.maintainPool().catch(console.error);
+  }, 5 * 60 * 1000);
+  
+  // Thread pool status endpoint
+  app.get("/api/thread-pool-status", (req, res) => {
+    res.json(threadPreloader.getPoolStatus());
+  });
   
   // Get messages for a session
   app.get("/api/messages/:sessionId", async (req, res) => {
@@ -62,12 +138,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Retrieved assistantThread:", assistantThread);
       
       if (!assistantThread) {
-        // Create new thread
-        const thread = await openai.beta.threads.create();
-        console.log("Created OpenAI thread:", thread.id);
+        // Try to use a preloaded thread first
+        let threadId = threadPreloader.getPreloadedThread();
+        
+        if (!threadId) {
+          // Fallback to creating new thread if none preloaded
+          const thread = await openai.beta.threads.create();
+          threadId = thread.id;
+          console.log("Created new OpenAI thread:", threadId);
+        } else {
+          console.log("Using preloaded thread:", threadId);
+        }
+        
         assistantThread = await storage.createAssistantThread({
           sessionId: sessionId,
-          threadId: thread.id
+          threadId: threadId
         });
         console.log("Stored assistantThread:", assistantThread);
       }
