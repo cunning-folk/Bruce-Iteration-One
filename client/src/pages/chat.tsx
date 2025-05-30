@@ -70,7 +70,7 @@ export default function Chat() {
   }, [errorMessage]);
 
   return (
-    <div className="flex flex-col h-screen max-w-4xl mx-auto bg-background border border-border">
+    <div className="flex flex-col h-screen w-full bg-background">
       <ChatHeader onClearChat={handleClearChat} />
       
       <MessageContainer 
