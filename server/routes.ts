@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMessageSchema, apiMessageSchema } from "@shared/schema";
+import { insertMessageSchema, apiMessageSchema, messages } from "@shared/schema";
+import { db } from "./db";
 import OpenAI from "openai";
 import { z } from "zod";
 
@@ -57,7 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
 
       // Get or create thread for this session
-      let assistantThread = await storage.getAssistantThread(messageData.sessionId);
+      let assistantThread = await storage.getAssistantThread(sessionId);
       console.log("Retrieved assistantThread:", assistantThread);
       
       if (!assistantThread) {
@@ -65,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const thread = await openai.beta.threads.create();
         console.log("Created OpenAI thread:", thread.id);
         assistantThread = await storage.createAssistantThread({
-          sessionId: messageData.sessionId,
+          sessionId: sessionId,
           threadId: thread.id
         });
         console.log("Stored assistantThread:", assistantThread);
@@ -106,19 +107,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (runStatus && runStatus.status === "completed") {
         // Get the assistant's response
-        const messages = await openai.beta.threads.messages.list(assistantThread.threadId);
-        const assistantMessage = messages.data.find(msg => 
+        const threadMessages = await openai.beta.threads.messages.list(assistantThread.threadId);
+        const assistantMessage = threadMessages.data.find(msg => 
           msg.role === "assistant" && 
           msg.created_at > (userMessage.timestamp.getTime() / 1000)
         );
 
-        if (assistantMessage && assistantMessage.content[0]?.type === "text") {
-          // Save assistant response
-          const assistantResponse = await storage.createMessage({
-            content: assistantMessage.content[0].text.value,
-            role: "assistant",
-            sessionId: messageData.sessionId
-          });
+        console.log("Assistant message:", JSON.stringify(assistantMessage, null, 2));
+
+        if (assistantMessage && assistantMessage.content && assistantMessage.content.length > 0) {
+          const messageContent = assistantMessage.content[0];
+          if (messageContent.type === "text" && messageContent.text) {
+            // Save assistant response directly to database
+            const [assistantResponse] = await db
+              .insert(messages)
+              .values({
+                content: messageContent.text.value,
+                role: "assistant",
+                sessionId: sessionId
+              })
+              .returning();
 
           res.json({ userMessage, assistantResponse });
         } else {
