@@ -13,6 +13,56 @@ const openai = new OpenAI({
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID || process.env.ASSISTANT_ID || "asst_h3s1TBNQUXg1NqxGcwXNAWZl";
 
+// Smart caching system for faster responses
+class ResponseCache {
+  private cache: Map<string, { response: string, timestamp: number }> = new Map();
+  private readonly TTL = 60 * 60 * 1000; // 1 hour TTL
+  
+  private normalizeQuery(content: string): string {
+    return content.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+  }
+  
+  get(content: string): string | null {
+    const key = this.normalizeQuery(content);
+    const cached = this.cache.get(key);
+    
+    if (cached && (Date.now() - cached.timestamp) < this.TTL) {
+      return cached.response;
+    }
+    
+    if (cached) {
+      this.cache.delete(key); // Cleanup expired entry
+    }
+    
+    return null;
+  }
+  
+  set(content: string, response: string): void {
+    const key = this.normalizeQuery(content);
+    this.cache.set(key, { response, timestamp: Date.now() });
+  }
+  
+  cleanup(): void {
+    const now = Date.now();
+    const keysToDelete: string[] = [];
+    
+    this.cache.forEach((value, key) => {
+      if (now - value.timestamp >= this.TTL) {
+        keysToDelete.push(key);
+      }
+    });
+    
+    keysToDelete.forEach(key => this.cache.delete(key));
+  }
+}
+
+const responseCache = new ResponseCache();
+
+// Cleanup cache every 30 minutes
+setInterval(() => {
+  responseCache.cleanup();
+}, 30 * 60 * 1000);
+
 // Thread preloading system
 class ThreadPreloader {
   private preloadedThreads: Set<string> = new Set();
@@ -123,7 +173,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: "OpenAI Assistant ID not configured" });
       }
 
-      // Save user message directly to database
+      // Check cache first for instant responses
+      const cachedResponse = responseCache.get(content);
+      if (cachedResponse) {
+        console.log("⚡ Cache hit - returning instant response");
+        
+        // Save user message to database
+        const [userMessage] = await db
+          .insert(messages)
+          .values({
+            content: content,
+            role: "user",
+            sessionId: sessionId
+          })
+          .returning();
+
+        // Save cached assistant response to database
+        const [assistantMessage] = await db
+          .insert(messages)
+          .values({
+            content: cachedResponse,
+            role: "assistant",
+            sessionId: sessionId
+          })
+          .returning();
+
+        return res.json({
+          userMessage,
+          assistantMessage,
+          cached: true,
+          responseTime: "< 100ms"
+        });
+      }
+
+      // Save user message to database
       const [userMessage] = await db
         .insert(messages)
         .values({
@@ -217,6 +300,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           console.log("Extracted response text:", responseText);
+          
+          // Cache the response for future use
+          responseCache.set(content, responseText);
           
           // Save the assistant response and send response immediately
           const assistantResponse = await storage.createMessage({

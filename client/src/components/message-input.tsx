@@ -4,9 +4,11 @@ interface MessageInputProps {
   onSendMessage: (message: string) => void;
   disabled: boolean;
   messageCount: number;
+  responseTime?: string;
+  isCached?: boolean;
 }
 
-export default function MessageInput({ onSendMessage, disabled, messageCount }: MessageInputProps) {
+export default function MessageInput({ onSendMessage, disabled, messageCount, responseTime, isCached }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -50,7 +52,7 @@ export default function MessageInput({ onSendMessage, disabled, messageCount }: 
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type your message..." 
-            className="w-full px-4 py-3 pr-12 border border-input bg-background text-foreground rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent max-h-32 min-h-[48px] placeholder:text-muted-foreground"
+            className={`w-full px-4 py-3 pr-12 border border-input bg-background text-foreground rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent max-h-32 min-h-[48px] placeholder:text-muted-foreground transition-opacity ${disabled ? 'opacity-60' : 'opacity-100'}`}
             rows={1}
             disabled={disabled}
           />
@@ -80,6 +82,21 @@ export default function MessageInput({ onSendMessage, disabled, messageCount }: 
         <div className="flex items-center space-x-4 text-xs text-muted-foreground">
           <span>{messageCount} messages</span>
           <span>•</span>
+          {isCached && (
+            <>
+              <span className="flex items-center space-x-1">
+                <span>⚡</span>
+                <span>Instant response</span>
+              </span>
+              <span>•</span>
+            </>
+          )}
+          {responseTime && (
+            <>
+              <span>{responseTime}</span>
+              <span>•</span>
+            </>
+          )}
           <span>Secure connection</span>
         </div>
       </div>
