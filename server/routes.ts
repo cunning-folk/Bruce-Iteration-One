@@ -72,13 +72,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("Created run:", run.id, "for thread:", assistantThread.threadId);
 
-      // Wait for completion
-      let runStatus = await openai.beta.threads.runs.retrieve(run.id, assistantThread.threadId);
-      
-      while (runStatus.status === "queued" || runStatus.status === "in_progress") {
+      // Wait for completion using polling approach
+      let runStatus;
+      do {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        runStatus = await openai.beta.threads.runs.retrieve(run.id, assistantThread.threadId);
-      }
+        runStatus = await openai.beta.threads.runs.retrieve(run.id, {
+          thread_id: assistantThread.threadId
+        });
+        console.log("Run status:", runStatus.status);
+      } while (runStatus.status === "queued" || runStatus.status === "in_progress");
 
       if (runStatus.status === "completed") {
         // Get the assistant's response
