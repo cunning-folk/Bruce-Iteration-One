@@ -1,4 +1,6 @@
 import type { Message } from "@shared/schema";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MessageBubbleProps {
   message: Message;
@@ -12,7 +14,11 @@ export default function MessageBubble({ message, time }: MessageBubbleProps) {
         <div className="flex items-start space-x-3 justify-end">
           <div className="flex-1 flex justify-end">
             <div className="bg-user-bubble text-white rounded-2xl rounded-tr-md px-4 py-3 max-w-lg">
-              <p>{message.content}</p>
+              <div className="prose prose-invert max-w-none prose-p:my-1 prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-ul:my-1 prose-ol:my-1 prose-li:my-0">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {message.content}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
           <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
@@ -38,7 +44,11 @@ export default function MessageBubble({ message, time }: MessageBubbleProps) {
       </div>
       <div className="flex-1">
         <div className="bg-assistant rounded-2xl rounded-tl-md px-4 py-3 max-w-lg">
-          <p className="text-foreground whitespace-pre-wrap">{message.content}</p>
+          <div className="text-foreground prose prose-invert max-w-none prose-p:my-2 prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-ul:my-2 prose-ol:my-2 prose-li:my-0">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {message.content}
+            </ReactMarkdown>
+          </div>
         </div>
         <div className="flex items-center space-x-2 mt-1">
           <span className="text-xs text-muted-foreground">Assistant</span>
