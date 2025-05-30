@@ -91,10 +91,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("Created run:", run.id, "for thread:", assistantThread.threadId);
 
-      // Wait for completion with manual polling
+      // Wait for completion with optimized polling
       let runStatus = run;
+      let pollInterval = 500; // Start with 500ms
+      const maxInterval = 2000; // Cap at 2 seconds
+      
       while (runStatus.status === "queued" || runStatus.status === "in_progress") {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        
         const response = await fetch(`https://api.openai.com/v1/threads/${assistantThread.threadId}/runs/${run.id}`, {
           headers: {
             'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -103,15 +107,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         runStatus = await response.json();
         console.log("Run status:", runStatus.status);
+        
+        // Gradually increase polling interval to reduce API calls
+        pollInterval = Math.min(pollInterval * 1.2, maxInterval);
       }
 
       if (runStatus && runStatus.status === "completed") {
-        // Get the assistant's response - use the most recent assistant message
-        const threadMessages = await openai.beta.threads.messages.list(assistantThread.threadId, { limit: 10 });
+        // Get the assistant's response - limit to 5 most recent messages for faster retrieval
+        const threadMessages = await openai.beta.threads.messages.list(assistantThread.threadId, { 
+          limit: 5,
+          order: "desc"
+        });
         const assistantMessage = threadMessages.data.find(msg => msg.role === "assistant");
 
         console.log("Found assistant message:", assistantMessage?.id);
-        console.log("Message content structure:", JSON.stringify(assistantMessage?.content, null, 2));
         
         if (assistantMessage && assistantMessage.content && assistantMessage.content.length > 0) {
           // Get the text content from the first content block
@@ -124,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log("Extracted response text:", responseText);
           
-          // Save the assistant response
+          // Save the assistant response and send response immediately
           const assistantResponse = await storage.createMessage({
             content: responseText,
             role: "assistant",
