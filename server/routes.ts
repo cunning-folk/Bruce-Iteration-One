@@ -40,14 +40,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get or create thread for this session
       let assistantThread = await storage.getAssistantThread(messageData.sessionId);
+      console.log("Retrieved assistantThread:", assistantThread);
       
       if (!assistantThread) {
         // Create new thread
         const thread = await openai.beta.threads.create();
+        console.log("Created OpenAI thread:", thread.id);
         assistantThread = await storage.createAssistantThread({
           sessionId: messageData.sessionId,
           threadId: thread.id
         });
+        console.log("Stored assistantThread:", assistantThread);
+      }
+
+      if (!assistantThread.threadId) {
+        throw new Error("Thread ID is missing from stored assistant thread");
       }
 
       // Add message to thread
