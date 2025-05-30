@@ -70,7 +70,7 @@ export default function Chat() {
   }, [errorMessage]);
 
   return (
-    <div className="flex flex-col h-screen max-w-4xl mx-auto bg-white shadow-sm">
+    <div className="flex flex-col h-screen max-w-4xl mx-auto bg-background border border-border">
       <ChatHeader onClearChat={handleClearChat} />
       
       <MessageContainer 
@@ -81,14 +81,14 @@ export default function Chat() {
 
       {errorMessage && (
         <div className="px-6 py-2">
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3 flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <i className="fas fa-exclamation-triangle text-red-500 text-sm"></i>
-              <span className="text-red-700 text-sm">{errorMessage}</span>
+              <i className="fas fa-exclamation-triangle text-destructive text-sm"></i>
+              <span className="text-destructive text-sm">{errorMessage}</span>
             </div>
             <button 
               onClick={dismissError}
-              className="text-red-400 hover:text-red-600"
+              className="text-destructive/60 hover:text-destructive"
             >
               <i className="fas fa-times text-sm"></i>
             </button>
