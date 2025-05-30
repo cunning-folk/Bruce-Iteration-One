@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMessageSchema } from "@shared/schema";
+import { insertMessageSchema, apiMessageSchema } from "@shared/schema";
 import OpenAI from "openai";
 import { z } from "zod";
 
@@ -29,25 +29,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send a message and get assistant response
   app.post("/api/messages", async (req, res) => {
     try {
-      console.log("Raw request body:", req.body);
-      console.log("Request headers:", req.headers);
+      // Simple validation without complex schema parsing
+      const { content, sessionId } = req.body;
       
-      // Create the message data with explicit role
-      const requestData = {
-        content: req.body.content,
-        sessionId: req.body.sessionId,
-        role: "user"
+      if (!content || !sessionId) {
+        return res.status(400).json({ message: "Content and sessionId are required" });
+      }
+      
+      const messageData = {
+        content,
+        sessionId,
+        role: "user" as const
       };
-      console.log("Parsing data:", requestData);
-      
-      const messageData = insertMessageSchema.parse(requestData);
       
       if (!ASSISTANT_ID) {
         return res.status(500).json({ message: "OpenAI Assistant ID not configured" });
       }
 
-      // Save user message
-      const userMessage = await storage.createMessage(messageData);
+      // Save user message directly to database
+      const [userMessage] = await db
+        .insert(messages)
+        .values({
+          content: content,
+          role: "user",
+          sessionId: sessionId
+        })
+        .returning();
 
       // Get or create thread for this session
       let assistantThread = await storage.getAssistantThread(messageData.sessionId);

@@ -34,6 +34,12 @@ export const insertMessageSchema = createInsertSchema(messages).pick({
   sessionId: true,
 });
 
+// Schema for incoming API requests (without role)
+export const apiMessageSchema = createInsertSchema(messages).pick({
+  content: true,
+  sessionId: true,
+});
+
 export const insertAssistantThreadSchema = createInsertSchema(assistantThreads).pick({
   sessionId: true,
   threadId: true,
