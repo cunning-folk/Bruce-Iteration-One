@@ -97,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error("No valid assistant response found");
         }
       } else {
-        throw new Error(`Assistant run failed with status: ${runStatus.status}`);
+        throw new Error(`Assistant run failed with status: ${completedRun.status}`);
       }
 
     } catch (error) {
