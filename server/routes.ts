@@ -16,7 +16,7 @@ const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID || process.env.ASSISTANT_ID
 // Thread preloading system
 class ThreadPreloader {
   private preloadedThreads: Set<string> = new Set();
-  private maxPreloadedThreads = 5;
+  private maxPreloadedThreads = 8;
   
   async preloadThread(): Promise<string> {
     try {
@@ -178,8 +178,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Wait for completion with optimized polling
       let runStatus = run;
-      let pollInterval = 500; // Start with 500ms
-      const maxInterval = 2000; // Cap at 2 seconds
+      let pollInterval = 200; // Start with 200ms for faster response
+      const maxInterval = 1000; // Cap at 1 second
       
       while (runStatus.status === "queued" || runStatus.status === "in_progress") {
         await new Promise(resolve => setTimeout(resolve, pollInterval));
@@ -193,8 +193,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         runStatus = await response.json();
         console.log("Run status:", runStatus.status);
         
-        // Gradually increase polling interval to reduce API calls
-        pollInterval = Math.min(pollInterval * 1.2, maxInterval);
+        // More aggressive polling - smaller increments
+        pollInterval = Math.min(pollInterval * 1.1, maxInterval);
       }
 
       if (runStatus && runStatus.status === "completed") {
