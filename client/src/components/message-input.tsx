@@ -20,6 +20,15 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
     }
   }, [message]);
 
+  // Also handle resize on input change for immediate feedback
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && !disabled) {
@@ -49,12 +58,13 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
           <textarea 
             ref={textareaRef}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Type your message..." 
-            className={`w-full px-4 py-3 pr-12 border border-input bg-background text-foreground rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent max-h-32 min-h-[48px] placeholder:text-muted-foreground transition-opacity ${disabled ? 'opacity-60' : 'opacity-100'}`}
+            className={`w-full px-4 py-3 pr-12 border border-input bg-background text-foreground rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent max-h-48 min-h-[48px] placeholder:text-muted-foreground transition-opacity overflow-hidden ${disabled ? 'opacity-60' : 'opacity-100'}`}
             rows={1}
             disabled={disabled}
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           />
           
           <div className={`absolute bottom-2 right-3 text-xs ${isOverLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
