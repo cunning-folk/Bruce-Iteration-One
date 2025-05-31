@@ -10,7 +10,9 @@ interface MessageInputProps {
 
 export default function MessageInput({ onSendMessage, disabled, messageCount, responseTime, isCached }: MessageInputProps) {
   const [message, setMessage] = useState("");
+  const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -26,6 +28,58 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  };
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.lang = 'en-US';
+
+        recognitionRef.current.onresult = (event: any) => {
+          let transcript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+          }
+          setMessage(transcript);
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+          setIsListening(false);
+        };
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleVoiceInput = () => {
+    if (!recognitionRef.current) {
+      alert('Voice input is not supported in this browser. Please try Chrome, Safari, or Edge.');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      setIsListening(true);
+      recognitionRef.current.start();
     }
   };
 
@@ -71,6 +125,20 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
             {characterCount}/1000
           </div>
         </div>
+        
+        <button 
+          type="button"
+          onClick={toggleVoiceInput}
+          disabled={disabled}
+          className={`mr-2 rounded-full w-12 h-12 flex items-center justify-center transition-colors ${
+            isListening 
+              ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
+              : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
+          } disabled:bg-muted disabled:cursor-not-allowed`}
+          title={isListening ? 'Stop voice input' : 'Start voice input'}
+        >
+          <i className={`fas ${isListening ? 'fa-stop' : 'fa-microphone'} text-sm`}></i>
+        </button>
         
         <button 
           type="submit" 
