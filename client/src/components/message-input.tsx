@@ -88,6 +88,10 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
     if (message.trim() && !disabled) {
       onSendMessage(message);
       setMessage("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.focus();
+      }
     }
   };
 
@@ -97,7 +101,16 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
       if (message.trim() && !disabled) {
         onSendMessage(message);
         setMessage("");
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.focus();
+        }
       }
+    }
+    // Add keyboard shortcuts
+    if (e.key === 'Escape' && isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
     }
   };
 
@@ -115,7 +128,7 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Type your message..." 
-            className={`w-full px-4 py-3 pr-12 border border-input bg-background text-foreground rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent max-h-48 min-h-[48px] placeholder:text-muted-foreground transition-opacity overflow-hidden ${disabled ? 'opacity-60' : 'opacity-100'}`}
+            className={`w-full px-4 py-3 pr-12 border border-input bg-background text-foreground rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent max-h-48 min-h-[48px] placeholder:text-muted-foreground transition-smooth overflow-hidden message-shadow ${disabled ? 'opacity-60' : 'opacity-100'} ${isOverLimit ? 'border-red-500' : ''}`}
             rows={1}
             disabled={disabled}
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -130,12 +143,12 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
           type="button"
           onClick={toggleVoiceInput}
           disabled={disabled}
-          className={`mr-2 rounded-full w-12 h-12 flex items-center justify-center transition-colors ${
+          className={`mr-2 rounded-full w-12 h-12 flex items-center justify-center transition-smooth message-shadow ${
             isListening 
               ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
               : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
-          } disabled:bg-muted disabled:cursor-not-allowed`}
-          title={isListening ? 'Stop voice input' : 'Start voice input'}
+          } disabled:bg-muted disabled:cursor-not-allowed hover:shadow-lg`}
+          title={isListening ? 'Stop voice input (Esc)' : 'Start voice input'}
         >
 {isListening ? (
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -151,7 +164,7 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
         <button 
           type="submit" 
           disabled={!canSend}
-          className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center transition-colors"
+          className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center transition-smooth message-shadow hover:shadow-lg"
         >
           {disabled ? (
             <div className="animate-spin">

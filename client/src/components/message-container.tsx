@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./message-bubble";
 import type { Message } from "@shared/schema";
 
@@ -10,6 +10,7 @@ interface MessageContainerProps {
 
 export default function MessageContainer({ messages, isLoading, isAssistantTyping }: MessageContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -17,6 +18,24 @@ export default function MessageContainer({ messages, isLoading, isAssistantTypin
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [messages, isAssistantTyping]);
+
+  // Check if user has scrolled up
+  const handleScroll = () => {
+    if (containerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
+      setShowScrollButton(!isAtBottom && messages.length > 3);
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   const formatTime = (timestamp: Date) => {
     return new Date(timestamp).toLocaleTimeString('en-US', { 
