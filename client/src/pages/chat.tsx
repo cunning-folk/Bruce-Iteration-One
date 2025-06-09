@@ -159,6 +159,7 @@ export default function Chat() {
         messages={messages}
         isLoading={isLoading}
         isAssistantTyping={sendMessageMutation.isPending}
+        textSize={textSize}
       />
 
       {errorMessage && (

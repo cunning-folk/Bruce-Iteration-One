@@ -6,10 +6,17 @@ import { useState } from "react";
 interface MessageBubbleProps {
   message: Message;
   time: string;
+  textSize: 'small' | 'medium' | 'large';
 }
 
-export default function MessageBubble({ message, time }: MessageBubbleProps) {
+export default function MessageBubble({ message, time, textSize }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
+
+  const textSizeClasses = {
+    small: 'prose-sm',
+    medium: 'prose-base', 
+    large: 'prose-lg'
+  };
 
   const handleCopy = async () => {
     try {

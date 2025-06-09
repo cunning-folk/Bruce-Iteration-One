@@ -6,9 +6,10 @@ interface MessageContainerProps {
   messages: Message[];
   isLoading: boolean;
   isAssistantTyping: boolean;
+  textSize: 'small' | 'medium' | 'large';
 }
 
-export default function MessageContainer({ messages, isLoading, isAssistantTyping }: MessageContainerProps) {
+export default function MessageContainer({ messages, isLoading, isAssistantTyping, textSize }: MessageContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
@@ -87,6 +88,7 @@ export default function MessageContainer({ messages, isLoading, isAssistantTypin
             <MessageBubble 
               message={message}
               time={formatTime(message.timestamp)}
+              textSize={textSize}
             />
           </div>
         ))}
