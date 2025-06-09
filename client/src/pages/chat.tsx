@@ -4,28 +4,51 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import ChatHeader from "@/components/chat-header";
 import MessageContainer from "@/components/message-container";
 import MessageInput from "@/components/message-input";
+import ChatSidebar from "@/components/chat-sidebar";
 import type { Message } from "@shared/schema";
 
 export default function Chat() {
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [textSize, setTextSize] = useState<'small' | 'medium' | 'large'>('medium');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sessions, setSessions] = useState<string[]>([]);
+  const [currentSession, setCurrentSession] = useState(sessionId);
 
   const { data: messages = [], isLoading } = useQuery<Message[]>({
-    queryKey: [`/api/messages/${sessionId}`],
+    queryKey: [`/api/messages/${currentSession}`],
     refetchInterval: false,
   });
+
+  // Load sessions from localStorage
+  useEffect(() => {
+    const savedSessions = localStorage.getItem('chatSessions');
+    if (savedSessions) {
+      setSessions(JSON.parse(savedSessions));
+    }
+  }, []);
+
+  // Save session to localStorage when messages are present
+  useEffect(() => {
+    if (messages.length > 0 && !sessions.includes(currentSession)) {
+      const updatedSessions = [currentSession, ...sessions].slice(0, 10); // Keep last 10 sessions
+      setSessions(updatedSessions);
+      localStorage.setItem('chatSessions', JSON.stringify(updatedSessions));
+    }
+  }, [messages, currentSession, sessions]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       const response = await apiRequest("POST", "/api/messages", {
         content,
         role: "user",
-        sessionId,
+        sessionId: currentSession,
       });
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/messages/${sessionId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${currentSession}`] });
       setErrorMessage(null);
     },
     onError: (error) => {
@@ -36,10 +59,10 @@ export default function Chat() {
 
   const clearChatMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("DELETE", `/api/messages/${sessionId}`);
+      await apiRequest("DELETE", `/api/messages/${currentSession}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/messages/${sessionId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${currentSession}`] });
     },
   });
 
