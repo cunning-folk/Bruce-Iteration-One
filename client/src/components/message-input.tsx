@@ -11,8 +11,10 @@ interface MessageInputProps {
 export default function MessageInput({ onSendMessage, disabled, messageCount, responseTime, isCached }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -83,11 +85,44 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size must be less than 10MB');
+        return;
+      }
+      // Check file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'text/plain', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please upload images (JPG, PNG, GIF), text files, or PDFs only');
+        return;
+      }
+      setUploadedFile(file);
+    }
+  };
+
+  const removeFile = () => {
+    setUploadedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim() && !disabled) {
-      onSendMessage(message);
+    if ((message.trim() || uploadedFile) && !disabled) {
+      let finalMessage = message.trim();
+      if (uploadedFile) {
+        finalMessage += uploadedFile ? ` [Attached: ${uploadedFile.name}]` : '';
+      }
+      onSendMessage(finalMessage);
       setMessage("");
+      setUploadedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
         textareaRef.current.focus();
@@ -116,10 +151,33 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
 
   const characterCount = message.length;
   const isOverLimit = characterCount > 1000;
-  const canSend = message.trim().length > 0 && !disabled && !isOverLimit;
+  const canSend = (message.trim().length > 0 || uploadedFile) && !disabled && !isOverLimit;
 
   return (
     <div className="border-t border-border bg-background p-4">
+      {/* File upload preview */}
+      {uploadedFile && (
+        <div className="mb-3 p-3 bg-secondary/50 rounded-lg flex items-center justify-between animate-fade-in">
+          <div className="flex items-center space-x-2">
+            <svg className="w-4 h-4 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zM3 12a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zM3 7a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V7z" clipRule="evenodd"/>
+            </svg>
+            <span className="text-sm text-foreground">{uploadedFile.name}</span>
+            <span className="text-xs text-muted-foreground">({(uploadedFile.size / 1024).toFixed(1)} KB)</span>
+          </div>
+          <button
+            type="button"
+            onClick={removeFile}
+            className="text-muted-foreground hover:text-foreground transition-smooth p-1 rounded"
+            title="Remove file"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
+            </svg>
+          </button>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="flex items-end space-x-3">
         <div className="flex-1 relative">
           <textarea 
@@ -127,7 +185,7 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
             value={message}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Type your message..." 
+            placeholder={uploadedFile ? "Add a message about your file..." : "Type your message..."} 
             className={`w-full px-4 py-3 pr-12 border border-input bg-background text-foreground rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent max-h-48 min-h-[48px] placeholder:text-muted-foreground transition-smooth overflow-hidden message-shadow ${disabled ? 'opacity-60' : 'opacity-100'} ${isOverLimit ? 'border-red-500' : ''}`}
             rows={1}
             disabled={disabled}
@@ -138,6 +196,28 @@ export default function MessageInput({ onSendMessage, disabled, messageCount, re
             {characterCount}/1000
           </div>
         </div>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          onChange={handleFileUpload}
+          accept="image/*,.txt,.pdf"
+          className="hidden"
+        />
+
+        {/* File upload button */}
+        <button 
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={disabled}
+          className="mr-2 rounded-full w-12 h-12 flex items-center justify-center transition-smooth message-shadow bg-secondary hover:bg-secondary/80 text-secondary-foreground disabled:bg-muted disabled:cursor-not-allowed hover:shadow-lg"
+          title="Upload file"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.413V13H5.5z"/>
+          </svg>
+        </button>
         
         <button 
           type="button"
