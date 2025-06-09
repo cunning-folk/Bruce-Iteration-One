@@ -1,8 +1,9 @@
 interface ChatHeaderProps {
   onClearChat: () => void;
+  onOpenSidebar?: () => void;
 }
 
-export default function ChatHeader({ onClearChat }: ChatHeaderProps) {
+export default function ChatHeader({ onClearChat, onOpenSidebar }: ChatHeaderProps) {
   return (
     <header className="bg-background border-b border-border px-6 py-4 flex items-center justify-between message-shadow">
       <div className="flex items-center space-x-3 animate-fade-in">
@@ -22,6 +23,18 @@ export default function ChatHeader({ onClearChat }: ChatHeaderProps) {
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse-gentle"></div>
           <span className="text-xs text-muted-foreground">Connected</span>
         </div>
+        
+        {onOpenSidebar && (
+          <button 
+            onClick={onOpenSidebar}
+            className="text-muted-foreground hover:text-foreground transition-smooth p-2 rounded hover:bg-secondary/20 lg:hidden"
+            title="Open sidebar"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd"/>
+            </svg>
+          </button>
+        )}
         
         <button 
           onClick={onClearChat}

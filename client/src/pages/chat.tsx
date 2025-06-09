@@ -4,7 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import ChatHeader from "@/components/chat-header";
 import MessageContainer from "@/components/message-container";
 import MessageInput from "@/components/message-input";
-import ChatSidebar from "@/components/chat-sidebar";
+import ChatSidebar from "../components/chat-sidebar";
 import type { Message } from "@shared/schema";
 
 export default function Chat() {
@@ -92,9 +92,68 @@ export default function Chat() {
     }
   }, [errorMessage]);
 
+  // Filter messages based on search query
+  const filteredMessages = searchQuery 
+    ? messages.filter(message =>
+        message.content.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : messages;
+
+  // Handle sidebar functions
+  const handleNewSession = () => {
+    const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setCurrentSession(newSessionId);
+    setSidebarOpen(false);
+  };
+
+  const handleSessionSelect = (sessionId: string) => {
+    setCurrentSession(sessionId);
+    setSidebarOpen(false);
+  };
+
+  const handleExportChat = () => {
+    const chatContent = messages.map(msg => 
+      `${msg.role === 'user' ? 'You' : 'Assistant'} (${new Date(msg.timestamp).toLocaleString()}):\n${msg.content}\n\n`
+    ).join('');
+    
+    const blob = new Blob([chatContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `therapy-chat-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const textSizeClass = {
+    small: 'text-sm',
+    medium: 'text-base', 
+    large: 'text-lg'
+  };
+
   return (
-    <div className="flex flex-col h-screen w-full bg-background">
-      <ChatHeader onClearChat={handleClearChat} />
+    <div className={`flex h-screen w-full bg-background ${textSizeClass[textSize]}`}>
+      <ChatSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        sessions={sessions}
+        currentSession={currentSession}
+        onSessionSelect={handleSessionSelect}
+        onNewSession={handleNewSession}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        textSize={textSize}
+        onTextSizeChange={setTextSize}
+        onExportChat={handleExportChat}
+      />
+      
+      <div className={`flex flex-col flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : ''}`}>
+        <ChatHeader 
+          onClearChat={handleClearChat} 
+          onOpenSidebar={() => setSidebarOpen(true)}
+        />
       
       <MessageContainer 
         messages={messages}
@@ -119,11 +178,12 @@ export default function Chat() {
         </div>
       )}
 
-      <MessageInput 
-        onSendMessage={handleSendMessage}
-        disabled={sendMessageMutation.isPending}
-        messageCount={messages.length}
-      />
+        <MessageInput 
+          onSendMessage={handleSendMessage}
+          disabled={sendMessageMutation.isPending}
+          messageCount={messages.length}
+        />
+      </div>
     </div>
   );
 }
