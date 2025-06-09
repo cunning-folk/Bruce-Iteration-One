@@ -34,7 +34,7 @@ export default function MessageBubble({ message, time, textSize }: MessageBubble
         <div className="flex items-start space-x-3 justify-end">
           <div className="flex-1 flex justify-end">
             <div className="bg-user-bubble text-white rounded-2xl rounded-tr-md px-4 py-3 max-w-lg">
-              <div className="prose prose-invert max-w-none prose-p:my-1 prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-ul:my-1 prose-ol:my-1 prose-li:my-0">
+              <div className={`prose prose-invert max-w-none prose-p:my-1 prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-ul:my-1 prose-ol:my-1 prose-li:my-0 ${textSizeClasses[textSize]}`}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {message.content}
                 </ReactMarkdown>
@@ -64,7 +64,7 @@ export default function MessageBubble({ message, time, textSize }: MessageBubble
       </div>
       <div className="flex-1">
         <div className="bg-assistant rounded-2xl rounded-tl-md px-4 py-3 max-w-lg message-shadow transition-smooth hover:shadow-lg">
-          <div className="text-foreground prose prose-invert max-w-none prose-p:my-2 prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-ul:my-2 prose-ol:my-2 prose-li:my-0">
+          <div className={`text-foreground prose prose-invert max-w-none prose-p:my-2 prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-ul:my-2 prose-ol:my-2 prose-li:my-0 ${textSizeClasses[textSize]}`}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {message.content}
             </ReactMarkdown>

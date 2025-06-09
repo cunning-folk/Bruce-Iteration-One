@@ -71,7 +71,7 @@ export default function MessageContainer({ messages, isLoading, isAssistantTypin
             </div>
             <div className="flex-1">
               <div className="bg-assistant rounded-2xl rounded-tl-md px-4 py-3 max-w-lg message-shadow transition-smooth">
-                <p className="text-foreground leading-relaxed">Hello! I'm here to help with questions about relationships, mindfulness, and personal growth. How can I assist you today?</p>
+                <p className={`text-foreground leading-relaxed ${textSize === 'small' ? 'text-sm' : textSize === 'large' ? 'text-lg' : 'text-base'}`}>Hello! I'm here to help with questions about relationships, mindfulness, and personal growth. How can I assist you today?</p>
               </div>
               <div className="flex items-center space-x-2 mt-1">
                 <span className="text-xs text-muted-foreground">Assistant</span>
