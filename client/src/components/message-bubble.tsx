@@ -56,7 +56,7 @@ export default function MessageBubble({ message, time }: MessageBubbleProps) {
         <i className="fas fa-robot text-primary text-sm"></i>
       </div>
       <div className="flex-1">
-        <div className="bg-assistant rounded-2xl rounded-tl-md px-4 py-3 max-w-lg">
+        <div className="bg-assistant rounded-2xl rounded-tl-md px-4 py-3 max-w-lg message-shadow transition-smooth hover:shadow-lg">
           <div className="text-foreground prose prose-invert max-w-none prose-p:my-2 prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-ul:my-2 prose-ol:my-2 prose-li:my-0">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {message.content}
